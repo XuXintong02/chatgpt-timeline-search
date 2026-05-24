@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="zh-CN" data-gpt-timeline-test-page>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ChatGPT Timeline Search Preview</title>
+    <style>
+      body {
+        margin: 0;
+        background: #ffffff;
+        color: #0d0d0d;
+        font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+
+      .shell {
+        display: grid;
+        grid-template-columns: 260px 1fr;
+        min-height: 100vh;
+      }
+
+      .sidebar {
+        border-right: 1px solid #ececec;
+        padding: 18px 14px;
+        background: #f9f9f9;
+      }
+
+      .brand {
+        font-size: 22px;
+        font-weight: 700;
+        margin-bottom: 28px;
+      }
+
+      .nav {
+        display: grid;
+        gap: 10px;
+        color: #2f2f2f;
+        font-size: 15px;
+      }
+
+      .nav span {
+        padding: 10px 12px;
+        border-radius: 10px;
+      }
+
+      .nav .active {
+        background: #ececec;
+      }
+
+      main {
+        width: min(760px, calc(100vw - 340px));
+        margin: 0 auto;
+        padding: 42px 0 180px;
+      }
+
+      h1 {
+        margin: 0 0 28px;
+        font-size: 28px;
+        line-height: 1.25;
+      }
+
+      [data-testid^="conversation-turn-"] {
+        margin: 0 0 34px;
+      }
+
+      [data-message-author-role="user"] {
+        margin-left: auto;
+        max-width: 72%;
+        padding: 14px 16px;
+        border-radius: 18px;
+        background: #f4f4f4;
+        line-height: 1.65;
+      }
+
+      [data-message-author-role="assistant"] {
+        max-width: 86%;
+        line-height: 1.7;
+      }
+
+      .markdown {
+        border-bottom: 1px solid #ececec;
+        padding-bottom: 26px;
+      }
+
+      .markdown p {
+        margin: 0 0 10px;
+      }
+
+      code {
+        background: #f4f4f4;
+        border-radius: 6px;
+        padding: 2px 5px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="shell">
+      <aside class="sidebar">
+        <div class="brand">ChatGPT</div>
+        <div class="nav">
+          <span>新聊天</span>
+          <span>搜索聊天</span>
+          <span>项目</span>
+          <span class="active">ChatGPT 插件实现建议</span>
+          <span>二手 MacBook 选购建议</span>
+          <span>GitHub 提 PR 详细步骤</span>
+        </div>
+      </aside>
+      <main aria-label="Conversation">
+        <h1>ChatGPT 时间轴插件第二版预览</h1>
+        <article data-testid="conversation-turn-1">
+          <div data-message-author-role="user" data-message-id="preview-user-1">
+            我现在想给 ChatGPT 写一个网页插件，可以提供时间轴和对话搜索功能。
+          </div>
+        </article>
+        <article data-testid="conversation-turn-2">
+          <div data-message-author-role="assistant" data-message-id="preview-assistant-1">
+            <div class="markdown">
+              <p>可以把插件做成 Manifest V3 扩展，只在 ChatGPT 会话页注入一个轻量侧边工具。</p>
+              <p>核心能力是索引已加载消息、搜索、跳转和历史扫描。</p>
+            </div>
+          </div>
+        </article>
+        <article data-testid="conversation-turn-3">
+          <div data-message-author-role="user" data-message-id="preview-user-2">
+            我希望第二版插件像 DeepSeek 右侧边时间轴那样，不用的时候只显示浅灰色标记。
+          </div>
+        </article>
+        <article data-testid="conversation-turn-4">
+          <div data-message-author-role="assistant" data-message-id="preview-assistant-2">
+            <div class="markdown">
+              <p>第二版可以默认只显示用户需求，在右侧放一个细窄时间轴轨道。</p>
+              <p>当鼠标靠近右侧轨道时，弹出包含搜索框和列表的面板。</p>
+            </div>
+          </div>
+        </article>
+        <article data-testid="conversation-turn-5">
+          <div data-message-author-role="user" data-message-id="preview-user-3">
+            搜索框要简单一点，UI 风格要更像 ChatGPT，简约、美观，不要遮挡聊天记录。
+          </div>
+        </article>
+        <article data-testid="conversation-turn-6">
+          <div data-message-author-role="assistant" data-message-id="preview-assistant-3">
+            <div class="markdown">
+              <p>可以使用白色半透明卡片、轻边框、较小圆角和柔和阴影。</p>
+              <p>默认列表只展示用户问题，必要时通过 <code>显示 ChatGPT 回复</code> 开关加入模型回复。</p>
+            </div>
+          </div>
+        </article>
+      </main>
+    </div>
+    <script src="/src/content.js"></script>
+  </body>
+</html>

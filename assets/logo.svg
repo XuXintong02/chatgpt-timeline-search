@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+  <title id="title">ChatGPT Timeline Search logo</title>
+  <desc id="desc">A minimalist timeline with search marker.</desc>
+  <rect width="512" height="512" rx="112" fill="#ffffff"/>
+  <path d="M156 104v304" stroke="#10a37f" stroke-width="24" stroke-linecap="round"/>
+  <path d="M156 128h152M156 256h92M156 384h180" stroke="#111827" stroke-width="24" stroke-linecap="round"/>
+  <circle cx="156" cy="128" r="32" fill="#10a37f"/>
+  <circle cx="156" cy="256" r="32" fill="#10a37f"/>
+  <circle cx="156" cy="384" r="32" fill="#10a37f"/>
+  <circle cx="334" cy="262" r="54" fill="none" stroke="#111827" stroke-width="24"/>
+  <path d="m374 302 46 46" stroke="#111827" stroke-width="24" stroke-linecap="round"/>
+</svg>

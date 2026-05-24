@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="zh-CN" data-gpt-timeline-test-page>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ChatGPT Timeline Search Fixture</title>
+    <style>
+      body {
+        margin: 0;
+        background: #f6f7f9;
+        color: #1f2937;
+        font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+
+      main {
+        width: min(820px, calc(100vw - 32px));
+        margin: 0 auto;
+        padding: 48px 0 240px;
+      }
+
+      [data-testid^="conversation-turn-"] {
+        margin: 0 0 28px;
+        padding: 18px 20px;
+        border: 1px solid #d7dde7;
+        border-radius: 8px;
+        background: #ffffff;
+      }
+
+      [data-message-author-role="user"] {
+        background: #eef6ff;
+      }
+
+      [data-message-author-role="assistant"] {
+        background: #ffffff;
+      }
+
+      .markdown p {
+        margin: 0 0 10px;
+        line-height: 1.6;
+      }
+    </style>
+  </head>
+  <body>
+    <main aria-label="Conversation">
+      <article data-testid="conversation-turn-1">
+        <div data-message-author-role="user" data-message-id="fixture-user-1">
+          我需要一个网页插件，在超长 ChatGPT 会话中搜索关键内容。
+        </div>
+      </article>
+
+      <article data-testid="conversation-turn-2">
+        <div data-message-author-role="assistant" data-message-id="fixture-assistant-1">
+          <div class="markdown">
+            <p>可以做一个时间轴面板，按消息顺序建立 timeline anchors，并支持关键词查找。</p>
+            <p>点击搜索结果后，页面应该滚动到对应消息。</p>
+          </div>
+        </div>
+      </article>
+
+      <article data-testid="conversation-turn-3">
+        <div data-message-author-role="user" data-message-id="fixture-user-2">
+          搜索结果最好可以区分我和 ChatGPT 的回复。
+        </div>
+      </article>
+
+      <article data-testid="conversation-turn-4">
+        <div data-message-author-role="assistant" data-message-id="fixture-assistant-2">
+          <div class="markdown">
+            <p>第一版加入角色过滤、刷新索引、向上扫描和快捷键。</p>
+            <p>这样可以覆盖长会话里的核心检索路径。</p>
+          </div>
+        </div>
+      </article>
+
+      <article data-testid="conversation-turn-5">
+        <div data-message-author-role="user" data-message-id="fixture-user-3">
+          第二版需要默认显示全部用户需求，而不是只显示最近几条。
+        </div>
+      </article>
+
+      <article data-testid="conversation-turn-6">
+        <div data-message-author-role="assistant" data-message-id="fixture-assistant-3">
+          <div class="markdown">
+            <p>面板内部应该使用独立滚动区域，用户可以像翻网页一样上下查找。</p>
+          </div>
+        </div>
+      </article>
+
+      <article data-testid="conversation-turn-7">
+        <div data-message-author-role="user" data-message-id="fixture-user-4">
+          点击时间轴时，请准确跳转到本轮对话的用户需求起始处。
+        </div>
+      </article>
+
+      <article data-testid="conversation-turn-8">
+        <div data-message-author-role="assistant" data-message-id="fixture-assistant-4">
+          <div class="markdown">
+            <p>即使点击的是 ChatGPT 回复，也应该定位到这一轮最开始的用户问题。</p>
+          </div>
+        </div>
+      </article>
+    </main>
+  </body>
+</html>

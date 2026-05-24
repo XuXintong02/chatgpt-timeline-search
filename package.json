@@ -1,0 +1,14 @@
+{
+  "name": "chatgpt-timeline-search",
+  "version": "0.1.0",
+  "description": "A Chrome/Edge extension that adds an in-page timeline and search panel for long ChatGPT conversations.",
+  "license": "MIT",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "check": "node --check src/content.js && node --check src/background.js && node --check tests/e2e-chrome.mjs && python3 -m json.tool manifest.json >/dev/null",
+    "test:e2e": "node tests/e2e-chrome.mjs",
+    "test": "npm run check && npm run test:e2e",
+    "package": "node scripts/package-extension.mjs"
+  }
+}
