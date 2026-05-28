@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "ChatGPT Timeline Search",
   "description": "Add an in-page timeline and search panel for long ChatGPT conversations.",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "permissions": [
     "activeTab",
     "scripting"
