@@ -11,6 +11,125 @@ const chromePath = findChromePath();
 
 const failures = [];
 
+function createConversationPayload(items) {
+  const mapping = {};
+  let parent = "root";
+
+  mapping.root = {
+    id: "root",
+    parent: null,
+    children: [],
+    message: null
+  };
+
+  items.forEach((item, index) => {
+    const nodeId = `node-${index + 1}`;
+    mapping[parent].children.push(nodeId);
+    mapping[nodeId] = {
+      id: nodeId,
+      parent,
+      children: [],
+      message: {
+        id: item.id,
+        author: { role: item.role },
+        create_time: 1700000000 + index,
+        content: {
+          content_type: "text",
+          parts: [item.text]
+        },
+        metadata: {}
+      }
+    };
+    parent = nodeId;
+  });
+
+  return {
+    current_node: parent,
+    mapping
+  };
+}
+
+const fullHistoryPayload = createConversationPayload([
+  {
+    id: "fixture-user-1",
+    role: "user",
+    text: "我需要一个网页插件，在超长 ChatGPT 会话中搜索关键内容。"
+  },
+  {
+    id: "fixture-assistant-1",
+    role: "assistant",
+    text: "可以做一个时间轴面板，按消息顺序建立 timeline anchors，并支持关键词查找。"
+  },
+  {
+    id: "fixture-user-2",
+    role: "user",
+    text: "搜索结果最好可以区分我和 ChatGPT 的回复。"
+  },
+  {
+    id: "fixture-assistant-2",
+    role: "assistant",
+    text: "第一版加入角色过滤、刷新索引、向上扫描和快捷键。"
+  },
+  {
+    id: "history-user-missing-middle",
+    role: "user",
+    text: "这是完整历史接口里的中间用户需求，当前页面 DOM 没有加载出来，但时间轴必须显示。"
+  },
+  {
+    id: "history-assistant-missing-middle",
+    role: "assistant",
+    text: "这是中间用户需求对应的回复。"
+  },
+  {
+    id: "fixture-user-3",
+    role: "user",
+    text: "第二版需要默认显示全部用户需求，而不是只显示最近几条。"
+  },
+  {
+    id: "fixture-assistant-3",
+    role: "assistant",
+    text: "面板内部应该使用独立滚动区域，用户可以像翻网页一样上下查找。"
+  },
+  {
+    id: "fixture-user-4",
+    role: "user",
+    text: "点击时间轴时，请准确跳转到本轮对话的用户需求起始处。"
+  },
+  {
+    id: "fixture-assistant-4",
+    role: "assistant",
+    text: "即使点击的是 ChatGPT 回复，也应该定位到这一轮最开始的用户问题。"
+  },
+  {
+    id: "history-user-tail",
+    role: "user",
+    text: "这是完整历史接口里的最后一个用户需求，也应该在没有滚动网页时出现在索引末尾。"
+  },
+  {
+    id: "history-assistant-tail",
+    role: "assistant",
+    text: "这是最后一个用户需求对应的回复。"
+  }
+]);
+
+const largeHistoryPayload = createConversationPayload(
+  Array.from({ length: 60 }, (_, index) => {
+    const ordinal = index + 1;
+    return [
+      {
+        id: `large-user-${ordinal}`,
+        role: "user",
+        text: `大型会话第 ${ordinal} 条用户需求，用于验证超过 50 条索引时头部、中部和尾部都可以跳转。`
+      },
+      {
+        id: `large-assistant-${ordinal}`,
+        role: "assistant",
+        text: `大型会话第 ${ordinal} 条回复。`
+      }
+    ];
+  }).flat()
+);
+
 function assert(condition, message) {
   if (!condition) {
     failures.push(message);
@@ -57,7 +176,21 @@ function waitForProcessExit(childProcess, timeoutMs = 3000) {
 function createStaticServer() {
   const server = createServer(async (request, response) => {
     const url = new URL(request.url || "/", "http://chatgpt.com");
-    const safePath = url.pathname === "/" ? "/tests/fixtures/chatgpt-like.html" : url.pathname;
+    if (url.pathname === "/backend-api/conversation/full-history") {
+      response.writeHead(200, { "content-type": "application/json; charset=utf-8" });
+      response.end(JSON.stringify(fullHistoryPayload));
+      return;
+    }
+    if (url.pathname === "/backend-api/conversation/large-history") {
+      response.writeHead(200, { "content-type": "application/json; charset=utf-8" });
+      response.end(JSON.stringify(largeHistoryPayload));
+      return;
+    }
+
+    const safePath =
+      url.pathname === "/" || url.pathname === "/c/full-history" || url.pathname === "/c/large-history"
+        ? "/tests/fixtures/chatgpt-like.html"
+        : url.pathname;
     const filePath = resolve(projectRoot, `.${safePath}`);
 
     if (!filePath.startsWith(projectRoot)) {
@@ -68,9 +201,12 @@ function createStaticServer() {
 
     try {
       const file = await readFile(filePath);
-      response.writeHead(200, {
-        "content-type": filePath.endsWith(".html") ? "text/html; charset=utf-8" : "text/plain"
-      });
+      const contentType = filePath.endsWith(".html")
+        ? "text/html; charset=utf-8"
+        : filePath.endsWith(".css")
+          ? "text/css; charset=utf-8"
+          : "text/plain; charset=utf-8";
+      response.writeHead(200, { "content-type": contentType });
       response.end(file);
     } catch (error) {
       response.writeHead(404);
@@ -278,16 +414,30 @@ async function main() {
         subtitle: root.querySelector('.title span')?.textContent,
         cards: root.querySelectorAll('.panel [data-jump-id]').length,
         railMarks: root.querySelectorAll('.rail-mark').length,
+        ordinals: Array.from(root.querySelectorAll('.ordinal')).map((node) => node.textContent),
         pinned: root.querySelector('.dock')?.classList.contains('is-pinned')
       };
     })()`);
 
     assert(initial.title === "时间轴", "Panel title should render");
-    assert(initial.subtitle.includes("8 条已索引"), "Should index 8 fixture messages");
+    assert(initial.subtitle.includes("4 条用户需求已索引"), "Default title should count indexed user requests");
     assert(initial.subtitle.includes("当前显示 4 条"), "Default view should show all loaded user messages");
     assert(initial.cards === 4, "Default list should contain all 4 user cards");
     assert(initial.railMarks === 4, "Default rail should contain all 4 user markers");
+    assert(initial.ordinals.join(",") === "#1,#2,#3,#4", "Default user-request ordinals should be continuous");
     assert(initial.pinned === false, "Panel should not be pinned open by default");
+
+    const dockGeometry = await evaluate(client, `(() => {
+      const root = document.querySelector('#chatgpt-timeline-search').shadowRoot;
+      const rect = root.querySelector('.dock').getBoundingClientRect();
+      return {
+        heightRatio: rect.height / window.innerHeight,
+        centerDelta: Math.abs((rect.top + rect.height / 2) - window.innerHeight / 2)
+      };
+    })()`);
+
+    assert(dockGeometry.heightRatio > 0.25 && dockGeometry.heightRatio < 0.42, "Collapsed rail should stay near one third of the viewport height");
+    assert(dockGeometry.centerDelta < 2, "Collapsed rail should be vertically centered");
 
     const staleReferenceJumpState = await evaluate(client, `(() => {
       const articles = Array.from(document.querySelectorAll('[data-testid^="conversation-turn-"]'));
@@ -439,6 +589,354 @@ async function main() {
     assert(timelineState.timelineItems === 2, "Search result list should include all matching user messages");
     assert(timelineState.railMarks === 4, "Rail should stay all-user by default");
 
+    const prependedOrderState = await evaluate(client, `new Promise((resolve) => {
+      const root = document.querySelector('#chatgpt-timeline-search').shadowRoot;
+      root.querySelector('[data-action="clear"]').click();
+      const main = document.querySelector('main');
+      main.insertAdjacentHTML('afterbegin', \`
+        <article data-testid="conversation-turn-prepended">
+          <div data-message-author-role="user">
+            更早加载出来的用户需求，应该显示在时间轴最前面。
+          </div>
+        </article>
+      \`);
+      root.querySelector('[data-action="refresh"]').click();
+      setTimeout(() => {
+        resolve({
+          subtitle: root.querySelector('.title span')?.textContent,
+          firstText: root.querySelector('.text')?.textContent || '',
+          ordinals: Array.from(root.querySelectorAll('.ordinal')).slice(0, 3).map((node) => node.textContent)
+        });
+      }, 1800);
+    })`);
+
+    assert(prependedOrderState.subtitle.includes("5 条用户需求已索引"), "Late prepended user messages should be added to the default index count");
+    assert(prependedOrderState.firstText.includes("更早加载出来的用户需求"), "Late prepended messages should appear before the original conversation turns");
+    assert(prependedOrderState.ordinals.join(",") === "#1,#2,#3", "Timeline ordinals should be recalculated continuously after prepending older messages");
+
+    const longListScrollState = await evaluate(client, `new Promise((resolve) => {
+      const main = document.querySelector('main');
+      main.insertAdjacentHTML('beforeend', Array.from({ length: 12 }, (_, index) => \`
+        <article data-testid="conversation-turn-scroll-\${index + 1}">
+          <div data-message-author-role="user">
+            滚动测试第 \${index + 1} 条用户需求，用于确认弹出小框可以完整滚动查询。
+          </div>
+        </article>
+      \`).join(''));
+      document.querySelector('#chatgpt-timeline-search').shadowRoot.querySelector('[data-action="refresh"]').click();
+      setTimeout(() => {
+        const root = document.querySelector('#chatgpt-timeline-search').shadowRoot;
+        const content = root.querySelector('.content');
+        content.scrollTop = content.scrollHeight;
+        resolve({
+          cards: root.querySelectorAll('.panel [data-jump-id]').length,
+          railMarks: root.querySelectorAll('.rail-mark').length,
+          canScroll: content.scrollHeight > content.clientHeight,
+          scrollTop: content.scrollTop,
+          lastText: Array.from(root.querySelectorAll('.text')).at(-1)?.textContent || ''
+        });
+      }, 1800);
+    })`);
+
+    assert(longListScrollState.cards >= 17, "Panel list should render more than ten user-request indexes");
+    assert(longListScrollState.railMarks === 8, "Collapsed rail should cap visual markers at eight for long conversations");
+    assert(longListScrollState.canScroll, "Panel content should expose an internal scroll area for long indexes");
+    assert(longListScrollState.scrollTop > 0, "Panel content should allow scrolling through the full index");
+    assert(longListScrollState.lastText.includes("滚动测试第 12 条用户需求"), "Panel should keep later indexes reachable after scrolling");
+
+    const fullHistoryState = await evaluate(client, `new Promise((resolve) => {
+      history.pushState({}, '', '/c/full-history');
+      const main = document.querySelector('main');
+      main.innerHTML = \`
+        <article data-testid="conversation-turn-1">
+          <div data-message-author-role="user" data-message-id="fixture-user-1">
+            我需要一个网页插件，在超长 ChatGPT 会话中搜索关键内容。
+          </div>
+        </article>
+        <article data-testid="conversation-turn-2">
+          <div data-message-author-role="assistant" data-message-id="fixture-assistant-1">
+            <div class="markdown"><p>可以做一个时间轴面板，按消息顺序建立 timeline anchors，并支持关键词查找。</p></div>
+          </div>
+        </article>
+        <article data-testid="conversation-turn-7">
+          <div data-message-author-role="user" data-message-id="fixture-user-4">
+            点击时间轴时，请准确跳转到本轮对话的用户需求起始处。
+          </div>
+        </article>
+        <article data-testid="conversation-turn-8">
+          <div data-message-author-role="assistant" data-message-id="fixture-assistant-4">
+            <div class="markdown"><p>即使点击的是 ChatGPT 回复，也应该定位到这一轮最开始的用户问题。</p></div>
+          </div>
+        </article>
+      \`;
+      setTimeout(() => {
+        const root = document.querySelector('#chatgpt-timeline-search').shadowRoot;
+        const texts = Array.from(root.querySelectorAll('.text')).map((node) => node.textContent);
+        resolve({
+          subtitle: root.querySelector('.title span')?.textContent,
+          cards: root.querySelectorAll('.panel [data-jump-id]').length,
+          railMarks: root.querySelectorAll('.rail-mark').length,
+          ordinals: Array.from(root.querySelectorAll('.ordinal')).map((node) => node.textContent),
+          texts
+        });
+      }, 3200);
+    })`);
+
+    assert(fullHistoryState.subtitle.includes("6 条用户需求已索引"), "Full history fetch should index every user request before page scrolling");
+    assert(fullHistoryState.subtitle.includes("当前显示 6 条"), "Default full history view should show every indexed user request");
+    assert(fullHistoryState.cards === 6, "Full history view should render all user-request cards, not only visible DOM messages");
+    assert(fullHistoryState.railMarks === 6, "Full history rail should include every user request");
+    assert(fullHistoryState.ordinals.join(",") === "#1,#2,#3,#4,#5,#6", "Full history ordinals should be continuous from start to end");
+    assert(fullHistoryState.texts.some((text) => text.includes("中间用户需求")), "Full history should include user requests missing from the current DOM");
+    assert(fullHistoryState.texts.at(-1)?.includes("最后一个用户需求"), "Full history should include tail user requests before manual page scrolling");
+
+    const middleJumpState = await evaluate(client, `new Promise((resolve) => {
+      const main = document.querySelector('main');
+      main.insertAdjacentHTML('beforeend', '<div data-testid="virtual-scroll-space" style="height: 5200px;"></div>');
+      let inserted = false;
+      const scrollPositions = [];
+      const trackScroll = () => scrollPositions.push(window.scrollY);
+      const insertTarget = () => {
+        trackScroll();
+        if (inserted || window.scrollY < 900) {
+          return;
+        }
+        inserted = true;
+        const anchor = document.querySelector('[data-testid="conversation-turn-7"]');
+        anchor.insertAdjacentHTML('beforebegin', \`
+          <article data-testid="conversation-turn-history-middle">
+            <div data-message-author-role="user" data-message-id="history-user-missing-middle">
+              这是完整历史接口里的中间用户需求，当前页面 DOM 没有加载出来，但时间轴必须显示。
+            </div>
+          </article>
+        \`);
+        window.removeEventListener('scroll', insertTarget);
+        window.addEventListener('scroll', trackScroll);
+      };
+      window.addEventListener('scroll', insertTarget);
+      const root = document.querySelector('#chatgpt-timeline-search').shadowRoot;
+      const button = Array.from(root.querySelectorAll('.panel [data-jump-id]')).find((node) => node.getAttribute('data-jump-id') === 'history-user-missing-middle');
+      button.click();
+      setTimeout(() => {
+        window.removeEventListener('scroll', insertTarget);
+        window.removeEventListener('scroll', trackScroll);
+        const target = document.querySelector('[data-testid="conversation-turn-history-middle"]');
+        const directionChanges = scrollPositions.reduce((changes, value, index, list) => {
+          if (index < 2) {
+            return changes;
+          }
+          const previousDelta = list[index - 1] - list[index - 2];
+          const currentDelta = value - list[index - 1];
+          if (Math.abs(previousDelta) < 5 || Math.abs(currentDelta) < 5) {
+            return changes;
+          }
+          return Math.sign(previousDelta) === Math.sign(currentDelta) ? changes : changes + 1;
+        }, 0);
+        resolve({
+          exists: Boolean(target),
+          hit: target?.getAttribute('data-gpt-timeline-search-hit') || null,
+          scrollY: window.scrollY,
+          directionChanges
+        });
+      }, 1400);
+    })`);
+
+    assert(middleJumpState.exists, "Clicking a middle full-history index should scroll until the missing DOM message is rendered");
+    assert(middleJumpState.hit === "true", "Clicking a middle full-history index should highlight the loaded target message");
+    assert(middleJumpState.scrollY > 100, "Middle index jump should move away from the top when the target is not initially rendered");
+    assert(middleJumpState.directionChanges <= 1, "Middle index jump should avoid visible up-down probing");
+
+    const stableFullHistoryState = await evaluate(client, `new Promise((resolve) => {
+      const main = document.querySelector('main');
+      const anchor = document.querySelector('[data-testid="conversation-turn-7"]');
+      anchor.insertAdjacentHTML('beforebegin', \`
+        <article data-testid="conversation-turn-late-middle">
+          <div data-message-author-role="user">
+            这是 DOM 后来才出现的中间历史用户需求，不应该被当作新增消息插进完整索引。
+          </div>
+        </article>
+      \`);
+      main.insertAdjacentHTML('beforeend', \`
+        <article data-testid="conversation-turn-new-user">
+          <div data-message-author-role="user" data-message-id="new-user-after-history">
+            这是用户刚刚新发送的消息，应该追加到完整索引末尾。
+          </div>
+        </article>
+      \`);
+      setTimeout(() => {
+        const root = document.querySelector('#chatgpt-timeline-search').shadowRoot;
+        const texts = Array.from(root.querySelectorAll('.text')).map((node) => node.textContent);
+        resolve({
+          subtitle: root.querySelector('.title span')?.textContent,
+          cards: root.querySelectorAll('.panel [data-jump-id]').length,
+          ordinals: Array.from(root.querySelectorAll('.ordinal')).map((node) => node.textContent),
+          texts
+        });
+      }, 1200);
+    })`);
+
+    assert(stableFullHistoryState.subtitle.includes("7 条用户需求已索引"), "Only true new user messages should append after a complete history index");
+    assert(stableFullHistoryState.cards === 7, "Middle DOM-only historical messages should not create extra timeline cards");
+    assert(stableFullHistoryState.ordinals.join(",") === "#1,#2,#3,#4,#5,#6,#7", "Appended new user messages should keep continuous ordinals");
+    assert(stableFullHistoryState.texts.some((text) => text.includes("刚刚新发送的消息")), "New user messages should append to the end of the timeline");
+    assert(!stableFullHistoryState.texts.some((text) => text.includes("后来才出现的中间历史用户需求")), "DOM-only middle history should not disturb a complete history index");
+
+    const largeHistoryState = await evaluate(client, `new Promise((resolve) => {
+      history.pushState({}, '', '/c/large-history');
+      const main = document.querySelector('main');
+      main.style.position = 'relative';
+      main.innerHTML = '<div id="large-virtual-space" style="height: 24000px;"></div>';
+
+      const targetUsers = [1, 30, 60];
+      const rendered = new Set();
+      const articleFor = (ordinal) => {
+        const maxTop = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
+        const top = Math.round(maxTop * (((ordinal - 1) * 2) / 119)) + 120;
+        return \`
+          <article data-testid="conversation-turn-large-\${ordinal}" style="position:absolute;left:0;right:0;top:\${top}px;">
+            <div data-message-author-role="user" data-message-id="large-user-\${ordinal}">
+              大型会话第 \${ordinal} 条用户需求，用于验证超过 50 条索引时头部、中部和尾部都可以跳转。
+            </div>
+          </article>
+        \`;
+      };
+
+      const renderNearby = () => {
+        const maxTop = Math.max(1, document.documentElement.scrollHeight - window.innerHeight);
+        targetUsers.forEach((ordinal) => {
+          if (rendered.has(ordinal)) {
+            return;
+          }
+          const expectedTop = maxTop * (((ordinal - 1) * 2) / 119);
+          if (Math.abs(window.scrollY - expectedTop) < 2500 || (ordinal === 1 && window.scrollY < 300)) {
+            rendered.add(ordinal);
+            main.insertAdjacentHTML('beforeend', articleFor(ordinal));
+          }
+        });
+      };
+
+      window.__renderLargeTarget = (ordinal) => {
+        const maxTop = Math.max(1, document.documentElement.scrollHeight - window.innerHeight);
+        const expectedTop = maxTop * (((ordinal - 1) * 2) / 119);
+        const nearTailFallback = ordinal === 60 && window.scrollY > maxTop * 0.88;
+        if (!rendered.has(ordinal) && (Math.abs(window.scrollY - expectedTop) < 2500 || nearTailFallback)) {
+          rendered.add(ordinal);
+          main.insertAdjacentHTML('beforeend', articleFor(ordinal));
+        }
+      };
+      window.addEventListener('scroll', renderNearby);
+      window.__largeHistoryCleanup = () => {
+        window.removeEventListener('scroll', renderNearby);
+        delete window.__renderLargeTarget;
+      };
+      renderNearby();
+
+      setTimeout(() => {
+        const root = document.querySelector('#chatgpt-timeline-search').shadowRoot;
+        resolve({
+          subtitle: root.querySelector('.title span')?.textContent,
+          cards: root.querySelectorAll('.panel [data-jump-id]').length,
+          railMarks: root.querySelectorAll('.rail-mark').length,
+          ordinals: Array.from(root.querySelectorAll('.ordinal')).slice(0, 5).map((node) => node.textContent),
+          lastOrdinal: Array.from(root.querySelectorAll('.ordinal')).at(-1)?.textContent || ''
+        });
+      }, 3600);
+    })`);
+
+    assert(largeHistoryState.subtitle.includes("60 条用户需求已索引"), "Large full history should index more than 50 user requests");
+    assert(largeHistoryState.subtitle.includes("当前显示 60 条"), "Large full history should show every indexed user request in the panel");
+    assert(largeHistoryState.cards === 60, "Large full history should render all 60 user-request cards");
+    assert(largeHistoryState.railMarks === 8, "Large full history should keep the rail capped at eight markers");
+    assert(largeHistoryState.ordinals.join(",") === "#1,#2,#3,#4,#5", "Large full history should start with continuous ordinals");
+    assert(largeHistoryState.lastOrdinal === "#60", "Large full history should end at the correct ordinal");
+
+    const largeJumpState = await evaluate(client, `new Promise(async (resolve) => {
+      const results = [];
+      const root = document.querySelector('#chatgpt-timeline-search').shadowRoot;
+
+      async function clickAndWait(ordinal) {
+        const button = Array.from(root.querySelectorAll('.panel [data-jump-id]')).find((node) => node.getAttribute('data-jump-id') === 'large-user-' + ordinal);
+        const positions = [];
+        const trackScroll = () => positions.push(window.scrollY);
+        window.addEventListener('scroll', trackScroll);
+        button.click();
+        let target = null;
+        let hit = null;
+        const startedAt = Date.now();
+        while (Date.now() - startedAt < 3000) {
+          await new Promise((resolveWait) => setTimeout(resolveWait, 100));
+          window.__renderLargeTarget?.(ordinal);
+          target = document.querySelector('[data-testid="conversation-turn-large-' + ordinal + '"]');
+          hit = target?.getAttribute('data-gpt-timeline-search-hit') || null;
+          if (target && hit === 'true') {
+            break;
+          }
+        }
+        window.removeEventListener('scroll', trackScroll);
+        const directionChanges = positions.reduce((changes, value, index, list) => {
+          if (index < 2) {
+            return changes;
+          }
+          const previousDelta = list[index - 1] - list[index - 2];
+          const currentDelta = value - list[index - 1];
+          if (Math.abs(previousDelta) < 5 || Math.abs(currentDelta) < 5) {
+            return changes;
+          }
+          return Math.sign(previousDelta) === Math.sign(currentDelta) ? changes : changes + 1;
+        }, 0);
+        results.push({
+          ordinal,
+          exists: Boolean(target),
+          hit,
+          scrollY: window.scrollY,
+          directionChanges
+        });
+      }
+
+      await clickAndWait(1);
+      await clickAndWait(30);
+      await clickAndWait(60);
+      window.__largeHistoryCleanup?.();
+      resolve(results);
+    })`);
+
+    const largeJumpHead = largeJumpState.find((result) => result.ordinal === 1);
+    const largeJumpMiddle = largeJumpState.find((result) => result.ordinal === 30);
+    const largeJumpTail = largeJumpState.find((result) => result.ordinal === 60);
+
+    assert(largeJumpHead?.exists && largeJumpHead.hit === "true", "Large history head index should jump and highlight correctly");
+    assert(largeJumpMiddle?.exists && largeJumpMiddle.hit === "true", "Large history middle index should jump and highlight correctly");
+    assert(largeJumpTail?.exists && largeJumpTail.hit === "true", "Large history tail index should jump and highlight correctly");
+    assert(largeJumpMiddle.directionChanges <= 1, "Large history middle jump should avoid visible up-down probing");
+    assert(largeJumpTail.scrollY > largeJumpMiddle.scrollY, "Large history tail jump should land after the middle jump");
+
+    const noAutoScrollState = await evaluate(client, `new Promise((resolve) => {
+      history.pushState({}, '', '/c/no-history-endpoint');
+      const main = document.querySelector('main');
+      main.innerHTML = Array.from({ length: 30 }, (_, index) => \`
+        <article data-testid="conversation-turn-no-history-\${index + 1}">
+          <div data-message-author-role="user" data-message-id="no-history-user-\${index + 1}">
+            没有完整历史接口时的当前 DOM 用户需求 \${index + 1}。
+          </div>
+        </article>
+      \`).join('');
+      window.scrollTo({ top: 640, behavior: 'auto' });
+      const before = window.scrollY;
+      setTimeout(() => {
+        const root = document.querySelector('#chatgpt-timeline-search').shadowRoot;
+        resolve({
+          before,
+          after: window.scrollY,
+          cards: root.querySelectorAll('.panel [data-jump-id]').length,
+          railMarks: root.querySelectorAll('.rail-mark').length
+        });
+      }, 2600);
+    })`);
+
+    assert(Math.abs(noAutoScrollState.after - noAutoScrollState.before) < 4, "Automatic indexing should not scroll the page when full history fetch fails");
+    assert(noAutoScrollState.cards === 30, "Fallback DOM indexing should still read currently loaded user messages");
+    assert(noAutoScrollState.railMarks === 8, "Rail marker cap should also apply to fallback DOM indexes");
+
     const routeSwitchState = await evaluate(client, `new Promise((resolve) => {
       history.pushState({}, '', '/tests/fixtures/chatgpt-like.html?conversation=second');
       const main = document.querySelector('main');
@@ -469,7 +967,7 @@ async function main() {
       }, 1400);
     })`);
 
-    assert(routeSwitchState.subtitle.includes("2 条已索引"), "Route switch should rebuild the index for the new conversation");
+    assert(routeSwitchState.subtitle.includes("1 条用户需求已索引"), "Route switch should rebuild the user-request index for the new conversation");
     assert(routeSwitchState.subtitle.includes("当前显示 1 条"), "Route switch should default to the new conversation's user messages");
     assert(routeSwitchState.cards === 1, "Route switch should remove old conversation cards");
     assert(routeSwitchState.railMarks === 1, "Route switch should remove old conversation rail markers");
