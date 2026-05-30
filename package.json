@@ -7,7 +7,7 @@
   "type": "module",
   "scripts": {
     "check": "node --check src/content.js && node --check src/background.js && node --check tests/e2e-chrome.mjs && python3 -m json.tool manifest.json >/dev/null",
-    "test:e2e": "node tests/e2e-chrome.mjs",
+    "test:e2e": "node --experimental-websocket tests/e2e-chrome.mjs",
     "test": "npm run check && npm run test:e2e",
     "package": "node scripts/package-extension.mjs"
   }
