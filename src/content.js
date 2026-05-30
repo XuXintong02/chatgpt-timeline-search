@@ -1395,9 +1395,8 @@
     const offset = 92;
 
     if (before && after && before.index !== after.index) {
-      const topSpan = Math.abs(after.top - before.top);
       const indexSpan = after.index - before.index;
-      if (indexSpan > 2 && maxTop > visiblePageStep(container) * 2 && topSpan < visiblePageStep(container) * 0.8) {
+      if (indexSpan > 2 && maxTop > visiblePageStep(container) * 2) {
         return fallbackTop;
       }
       const ratio = (targetIndex - before.index) / (after.index - before.index);
